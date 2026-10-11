@@ -1395,6 +1395,26 @@ def fill_toc_pages(doc, entries, body_start_text, scheme, tmpdir):
     return True
 
 
+def set_doc_properties(doc, opts):
+    """作者、最后修改者写成报告作者（否则 Word 再保存时会填本机账户名），标题取封面题目。"""
+    info = json.loads(Path(opts.cover).read_text(encoding="utf-8")) if opts.cover else {}
+    author = opts.author or next((str(v).strip() for k, v in info.get("fields") or []
+                                  if str(k).replace(" ", "").replace("　", "") == "姓名"), "")
+    cp = doc.core_properties
+    # 原稿缺属性部件时 python-docx 会补默认值，不能带出去
+    if cp.last_modified_by == "python-docx":
+        cp.last_modified_by = ""
+    if cp.title == "Word Document":
+        cp.title = ""
+    if author:
+        cp.author = author
+        cp.last_modified_by = author
+    if info.get("title") and not cp.title:
+        cp.title = info["title"]
+    if author or info.get("title"):
+        log("文档属性：作者=%s，标题=%s" % (cp.author or "（未改）", cp.title or "（空）"))
+
+
 # --------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="中文课程报告 Word 排版")
@@ -1414,6 +1434,7 @@ def main():
     parser.add_argument("--page-numbers", nargs="?", const="roman", choices=["roman", "continuous"])
     parser.add_argument("--no-fill-toc", action="store_true")
     parser.add_argument("--timezone", default="Asia/Taipei")
+    parser.add_argument("--author", help="写入文档属性的作者/最后修改者；默认取封面的“姓名”")
     opts = parser.parse_args()
 
     doc = Document(opts.source)
@@ -1473,6 +1494,7 @@ def main():
             set_update_fields(doc)
 
     force_black(doc)
+    set_doc_properties(doc, opts)
     opts.output.parent.mkdir(parents=True, exist_ok=True)
     doc.save(opts.output)
     log("完成：" + str(opts.output))

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unicodedata
+import zipfile
 from pathlib import Path
 
 from docx import Document
@@ -110,6 +111,15 @@ def main():
     check("表格为三线表", doc.tables and all(border_ok(t) for t in doc.tables if len(t.columns) > 2))
 
     layout_checks(doc, body[:first_sect_idx + 1])
+
+    cp = doc.core_properties
+    check("文档属性：作者与最后修改者为封面姓名", cp.author == "张三" and cp.last_modified_by == "张三",
+          "%s / %s" % (cp.author, cp.last_modified_by))
+    check("文档属性：标题为报告题目", cp.title == "网络空间安全的战略演进与技术体系研究", cp.title)
+    with zipfile.ZipFile(docx_path) as z:
+        custom = z.read("docProps/custom.xml").decode("utf-8") if "docProps/custom.xml" in z.namelist() else ""
+    leaked = re.findall(r'name="([^"]+)"', custom)
+    check("没有残留的自定义属性（如 numbering）", not leaked, leaked)
 
     pdf = out / "preview" / "sample_preview.pdf"
     if pdf.exists():

@@ -28,6 +28,9 @@ end
 local function read_meta(meta)
   if meta.numbering then
     scheme = pandoc.utils.stringify(meta.numbering)
+    -- 读完就删：pandoc 会把未知元数据写进 docx 的自定义属性
+    meta.numbering = nil
+    return meta
   end
 end
 

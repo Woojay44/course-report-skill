@@ -207,8 +207,10 @@ def main():
     cmd = [sys.executable, str(HERE / "format_docx.py"), str(base), str(out / (md.stem + ".docx")),
         "--defaults", "--fix-abstract", "--three-line", "all", "--timezone", tz,
         "--page-numbers", scheme]
+    name = as_text(meta.get("author")) or as_text(defaults.get("name"))
+    if name:
+        cmd += ["--author", name]
     if want_cover:
-        name = as_text(meta.get("author")) or as_text(defaults.get("name"))
         sid = as_text(meta.get("student_id")) or as_text(defaults.get("student_id"))
         fields = []
         if name:
