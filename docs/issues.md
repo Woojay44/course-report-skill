@@ -20,11 +20,15 @@
 
 ## 三、Windows 环境
 
-7. 预览与目录页码回填只支持 soffice；有 Word 时不用 → 目录页码不回填，验收无法进行。
-8. 验收依赖 `pdftoppm`，Windows 通常没有，无替代方案。
-9. 字体检测只用 `fc-list`，Windows 上恒报缺宋体/黑体。
-10. 只在 PATH 找 pandoc，不识别 `pypandoc_binary` 自带的 pandoc。
-20. Windows 的 Python 不带 IANA 时区库，`zoneinfo` 取 Asia/Taipei 失败，每次报警告后回退 UTC+8（结果正确）；需依赖 `tzdata`。
+7. ✅ 预览与目录页码回填只支持 soffice；有 Word 时不用 → 目录页码不回填，验收无法进行。
+8. ✅ 验收依赖 `pdftoppm`，Windows 通常没有，无替代方案。
+9. ✅ 字体检测只用 `fc-list`，Windows 上恒报缺宋体/黑体。
+10. ✅ 只在 PATH 找 pandoc，不识别 `pypandoc_binary` 自带的 pandoc。
+20. ✅ Windows 的 Python 不带 IANA 时区库，`zoneinfo` 取 Asia/Taipei 失败，每次报警告后回退 UTC+8（结果正确）；需依赖 `tzdata`。
+22. ✅ 接入 Word 后暴露：`pdftotext` 默认输出 Latin-1，中文按 UTF-8 解码失败后静默退到 pymupdf；pymupdf 默认按内容流顺序取字，Word 把页脚写在正文前 → 页码检查误判。已加 `-enc UTF-8`，pymupdf 按位置排序。
+23. ✅ `pypandoc.get_pandoc_path()` 在 Windows 返回不带 `.exe` 的路径。
+
+第 4 步新增 `scripts/toolchain.py` 统一工具探测；Word 渲染经 PowerShell 调 COM，实例里还有用户文档时不 Quit（已实测：用户打开文档时渲染，文档保持打开）。严格自检（`--require-pages`）31/31 通过。
 
 ## 四、自检
 

@@ -24,6 +24,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -38,6 +39,9 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from docx.text.paragraph import Paragraph
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from toolchain import pdf_text_bottoms, pdf_text_pages, render_pdf  # noqa: E402
 
 BLACK = RGBColor(0, 0, 0)
 LATIN = "Times New Roman"
@@ -1035,13 +1039,19 @@ def build_cover(doc, info, gen, gen_refs):
     return els
 
 
+UTC8_ZONES = {"Asia/Shanghai", "Asia/Chongqing", "Asia/Harbin", "Asia/Urumqi", "Asia/Taipei",
+              "Asia/Hong_Kong", "Asia/Macau", "Asia/Singapore", "Asia/Kuala_Lumpur", "PRC", "ROC"}
+
+
 def today_cn(tz_name):
     try:
         from zoneinfo import ZoneInfo
         now = datetime.now(ZoneInfo(tz_name))
     except Exception:
+        # Windows 的 Python 不带时区库（缺 tzdata 包）；常用的 UTC+8 时区直接按固定偏移算
         now = datetime.now(timezone(timedelta(hours=8)))
-        log("警告：时区 %s 不可用，已按 UTC+8 计算日期" % tz_name)
+        if tz_name not in UTC8_ZONES:
+            log("警告：时区 %s 不可用（可 pip install tzdata），已按 UTC+8 计算日期" % tz_name)
     return "%d年%d月%d日" % (now.year, now.month, now.day)
 
 
@@ -1276,37 +1286,6 @@ def build_structure(doc, opts, gen, gen_refs):
 # --------------------------------------------------------------------------
 # 目录页码回填：先渲染成 PDF，再按标题所在页写回
 # --------------------------------------------------------------------------
-def render_pdf(docx_path, outdir):
-    exe = shutil.which("soffice") or shutil.which("libreoffice")
-    if not exe:
-        return None
-    try:
-        subprocess.run([exe, "--headless", "--convert-to", "pdf", "--outdir", str(outdir),
-                        str(docx_path)], capture_output=True, timeout=240, check=True)
-    except Exception:
-        return None
-    pdf = Path(outdir) / (Path(docx_path).stem + ".pdf")
-    return pdf if pdf.exists() else None
-
-
-def pdf_pages(pdf):
-    if shutil.which("pdftotext"):
-        try:
-            out = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], capture_output=True,
-                                 text=True, timeout=120).stdout
-            pages = out.split("\f")
-            if pages and not pages[-1].strip():
-                pages = pages[:-1]
-            return pages
-        except Exception:
-            pass
-    try:
-        from pypdf import PdfReader
-        return [pg.extract_text() or "" for pg in PdfReader(str(pdf)).pages]
-    except Exception:
-        return None
-
-
 def line_matches(page, target):
     tn = norm(target)
     for line in page.splitlines():
@@ -1349,38 +1328,52 @@ def check_toc_layout(pdf, pages, first):
     """目录跨页时，非末页的页尾不应大片留白（提前断页的征兆）。"""
     toc_idx = [i for i in range(first) if any(LEADER.search(l) for l in pages[i].splitlines())]
     log("目录占 %d 页" % len(toc_idx))
-    if len(toc_idx) < 2 or not shutil.which("pdftotext"):
+    if len(toc_idx) < 2:
         return
-    try:
-        out = subprocess.run(["pdftotext", "-bbox", "-f", str(toc_idx[0] + 1), "-l",
-                              str(toc_idx[-1] + 1), str(pdf), "-"],
-                             capture_output=True, text=True, timeout=60).stdout
-    except Exception:
-        return
-
-    chunks = out.split("<page ")[1:]
-    for k, chunk in enumerate(chunks[:-1]):
-        height = float(re.search(r'height="([\d.]+)"', chunk).group(1))
-        ys = [float(v) for v in re.findall(r'yMax="([\d.]+)"', chunk)]
-        body = [y for y in ys if y < 0.9 * height]  # 排除页脚页码
-        if body and max(body) / height < 0.75:
+    ratios = toc_page_bottoms(pdf, toc_idx[0], toc_idx[-1])
+    for k, ratio in enumerate((ratios or [])[:-1]):
+        if 0 < ratio < 0.75:
             log("警告：目录第 %d 页在 %.0f%% 处就换页，页尾留白过大，请检查是否有分页/分栏设置"
-                % (k + 1, 100 * max(body) / height))
+                % (k + 1, 100 * ratio))
+
+
+def toc_page_bottoms(pdf, first, last):
+    """各页正文最低位置占页高的比例（排除页脚）：pdftotext -bbox → pymupdf。"""
+    if shutil.which("pdftotext"):
+        try:
+            out = subprocess.run(["pdftotext", "-enc", "UTF-8", "-bbox", "-f", str(first + 1),
+                                  "-l", str(last + 1), str(pdf), "-"], capture_output=True, text=True,
+                                 encoding="utf-8", timeout=60).stdout
+            ratios = []
+            for chunk in out.split("<page ")[1:]:
+                height = float(re.search(r'height="([\d.]+)"', chunk).group(1))
+                ys = [float(v) for v in re.findall(r'yMax="([\d.]+)"', chunk)]
+                body = [y for y in ys if y < 0.9 * height]  # 排除页脚页码
+                ratios.append(max(body) / height if body else 0.0)
+            if ratios:
+                return ratios
+        except Exception:
+            pass
+    return pdf_text_bottoms(pdf, first, last)
 
 
 def fill_toc_pages(doc, entries, body_start_text, scheme, tmpdir):
     tmp_docx = Path(tmpdir) / "pass1.docx"
     doc.save(tmp_docx)
-    pdf = render_pdf(tmp_docx, tmpdir)
-    pages = pdf_pages(pdf) if pdf else None
+    pdf, renderer = render_pdf(tmp_docx, tmpdir)
+    pages = pdf_text_pages(pdf) if pdf else None
     if not pages:
-        log("警告：无法渲染 PDF，目录页码未回填，将设置为 Word 打开时更新")
+        if renderer:
+            log("警告：用 %s 渲染 PDF 失败，目录页码未回填，将设置为 Word 打开时更新" % renderer)
+        else:
+            log("警告：没有可用的渲染器（LibreOffice 或 Windows 上的 Word），目录页码未回填，"
+                "将设置为 Word 打开时更新")
         return False
     first = find_page(pages, body_start_text, 0)
     if first is None:
         multicol = body_is_multicol(doc)
         if multicol:
-            log("正文为多栏排版，pdftotext 无法可靠定位标题；"
+            log("正文为多栏排版，无法从渲染结果可靠定位标题；"
                 "目录页码跳过回填，已设置 Word 打开时自动更新"
                 "（在 Word 里右键目录 → 更新域 → 更新整个目录）")
         else:
@@ -1398,7 +1391,7 @@ def fill_toc_pages(doc, entries, body_start_text, scheme, tmpdir):
         labels.append(idx + 1 if scheme == "continuous" else idx - first + 1)
     for e, label in zip(entries, labels):
         e["t"].text = str(label)
-    log("目录页码已按渲染结果回填（共 %d 条，PDF 共 %d 页）" % (len(entries), len(pages)))
+    log("目录页码已按 %s 渲染结果回填（共 %d 条，PDF 共 %d 页）" % (renderer, len(entries), len(pages)))
     return True
 
 

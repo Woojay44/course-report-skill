@@ -1,5 +1,9 @@
 python-docx
-# pandoc：可用系统安装的 pandoc，或用下面这个包自带的
+# pandoc：可用系统安装的 pandoc，或用下面这个包自带的（也可用环境变量 PANDOC 指定路径）
 pypandoc_binary
+# 读取/渲染预览 PDF（替代 pdftotext、pdftoppm）
+pymupdf
+# Windows 的 Python 不带时区库
+tzdata; sys_platform == "win32"
 # 开发
 pyflakes

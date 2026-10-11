@@ -14,7 +14,7 @@ description: 中文课程报告的排版与交付：把结构化 Markdown 或已
 | 已有 `.docx`，要改排版 | 路线 A：`format_docx.py` |
 | 已有 `.md`/纯文本，或让你根据项目材料写报告 | 路线 B：写成结构化 Markdown → `build_report.py` |
 
-开始前先运行一次 `python scripts/probe_env.py`，读一下“注意”行（缺 pandoc、python-docx、soffice 等会影响哪一步）。
+开始前先运行一次 `python scripts/probe_env.py`，读一下“注意”行（缺 pandoc、python-docx、渲染器等会影响哪一步）。渲染器用于预览和目录页码回填：有 LibreOffice 用它，Windows 上没有时自动用本机 Word。
 
 ## 路线 B：结构化 Markdown → DOCX
 
@@ -27,7 +27,7 @@ description: 中文课程报告的排版与交付：把结构化 Markdown 或已
 
 3. 姓名、学号、时区取自 `templates/defaults.yaml`；`date: auto`（默认）按该时区取当天。用户本次另有说明时，在 front matter 里用 `author`、`student_id`、`cover_fields` 覆盖，不要改 defaults 文件。
 4. 读脚本输出：带“警告”“提示”的行必须处理或在交付时说明。
-5. 逐页检查 `out/preview/*_preview.pdf`（`pdftoppm -r 60 -png` 渲染后看图），见下方“验收”。
+5. 逐页检查 `out/preview/*_preview.pdf`：`python scripts/preview_pages.py out/preview/<名称>_preview.pdf` 转成逐页 PNG 后看图，见下方“验收”。
 6. 交付 `out/<名称>.docx`，不交预览 PDF。
 
 ### 项目材料起草（基础规则，完整写作模式将单独提供）
@@ -65,7 +65,7 @@ description: 中文课程报告的排版与交付：把结构化 Markdown 或已
 
 1. 做了哪些假设；哪些项目留空、待补充或有警告。
 2. 固定提醒：打开 Word 后右键目录 → 更新域 → 更新整个目录，再导出 PDF（预览用的是渲染环境字体，页码可能与 Word 差一两页）。
-3. 若预览里公式是空白：这是预览环境缺少 LibreOffice Math，docx 里是 Word 原生公式，以 Word 为准。
+3. 若用 LibreOffice 预览时公式是空白：这是缺少 LibreOffice Math，docx 里是 Word 原生公式，以 Word 为准。
 
 ## 禁止事项
 

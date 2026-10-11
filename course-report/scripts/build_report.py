@@ -8,18 +8,19 @@ python scripts/build_report.py report.md --out out/
 --numbering cn|decimal|manual        标题编号（默认取 defaults / front matter）
 --page-numbers roman|continuous
 --no-cover / --no-toc / --no-preview
-流程：读取 front matter → 生成封面信息 → 摘要拼进正文 → pandoc 转 docx（Lua 过滤器编号） → format_docx.py 排版（封面、目录、摘要、页码分节）→ 可选 soffice 预览 PDF。
+流程：读取 front matter → 生成封面信息 → 摘要拼进正文 → pandoc 转 docx（Lua 过滤器编号） → format_docx.py 排版（封面、目录、摘要、页码分节）→ 预览 PDF（LibreOffice，或 Windows 上的 Word）。
 """
 
 import argparse
 import json
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from toolchain import find_pandoc, render_pdf  # noqa: E402
 SKILL = HERE.parent
 FILTER = HERE / "filters" / "report.lua"
 DEFAULTS = SKILL / "templates" / "defaults.yaml"
@@ -156,9 +157,9 @@ def main():
     ap.add_argument("--no-preview", action="store_true")
     opts = ap.parse_args()
 
-    pandoc = shutil.which("pandoc")
+    pandoc = find_pandoc()
     if not pandoc:
-        die("找不到 pandoc", 3)
+        die("找不到 pandoc（可安装 pandoc，或 pip install pypandoc_binary，或用环境变量 PANDOC 指定）", 3)
     if opts.backend == "latex":
         die("LaTeX 后端将在阶段 2 提供，目前请用 --backend docx 或 auto", 3)
     md = opts.markdown.resolve()
@@ -231,19 +232,19 @@ def main():
     docx_out = out / (md.stem + ".docx")
     log("已生成：" + str(docx_out))
 
-    if not opts.no_preview and (shutil.which("soffice") or shutil.which("libreoffice")):
+    if not opts.no_preview:
         prev = out / "preview"
-        prev.mkdir(exist_ok=True)
-        exe = shutil.which("soffice") or shutil.which("libreoffice")
-        r = subprocess.run([exe, "--headless", "--convert-to", "pdf", "--outdir", str(prev), str(docx_out)],
-            capture_output=True, text=True, timeout=300)
-        pdf = prev / (md.stem + ".pdf")
-        if pdf.exists():
+        pdf, renderer = render_pdf(docx_out, prev, update_toc=True)
+        if pdf:
             final = prev / (md.stem + "_preview.pdf")
             pdf.replace(final)
-            log("预览 PDF：%s（字体为渲染环境的替代字体，仅供检查版面，不是交付文件）" % final)
+            note = "Word 渲染，与本机 Word 打开效果一致" if renderer == "word" else \
+                "字体为渲染环境的替代字体，仅供检查版面"
+            log("预览 PDF：%s（%s；不是交付文件）" % (final, note))
+        elif renderer:
+            log("警告：用 %s 生成预览 PDF 失败" % renderer)
         else:
-            log("警告：预览 PDF 生成失败：" + (r.stderr or "")[-200:])
+            log("提示：没有可用的渲染器（LibreOffice 或 Windows 上的 Word），未生成预览 PDF")
     log("提醒：在 Word 里打开后，右键目录 → 更新域 → 更新整个目录，再导出 PDF")
 
 

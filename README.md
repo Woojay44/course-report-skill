@@ -6,9 +6,9 @@
 
 ## 依赖
 
-- Python 3.10+，`python-docx`
-- pandoc ≥ 3.0
-- 可选：LibreOffice（预览、目录页码回填）
+- Python 3.10+，依赖见 `requirements.txt`（`pip install -r requirements.txt`）
+- pandoc ≥ 3.0：系统安装的，或 `pypandoc_binary` 自带的，或用环境变量 `PANDOC` 指定
+- 渲染器（预览、目录页码回填）：LibreOffice；Windows 上没有时自动用本机 Word
 
 ## 目录结构
 
@@ -23,4 +23,5 @@ docs/issues.md          v2 问题清单
 python course-report/scripts/probe_env.py      # 环境探测
 python course-report/scripts/selftest.py       # 自检
 python course-report/scripts/build_report.py report.md --out out/
+python course-report/scripts/preview_pages.py out/preview/report_preview.pdf   # 逐页 PNG
 ```

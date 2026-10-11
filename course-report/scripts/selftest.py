@@ -17,6 +17,8 @@ from docx import Document
 from docx.oxml.ns import qn
 
 SKILL = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(SKILL / "scripts"))
+from toolchain import pdf_text_pages  # noqa: E402
 results = []  # "PASS" / "FAIL" / "SKIP"
 
 
@@ -111,10 +113,7 @@ def main():
 
     pdf = out / "preview" / "sample_preview.pdf"
     if pdf.exists():
-        txt = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], capture_output=True, text=True).stdout
-        pages = txt.split("\f")
-        if pages and not pages[-1].strip():
-            pages = pages[:-1]
+        pages = pdf_text_pages(pdf) or [""]
         leader = re.compile(r"(\.\s*){4,}")
         check("封面页没有页码", not re.fullmatch(r"[ivx\d]+", last_line(pages[0])), last_line(pages[0]))
         check("目录页页码为 i", last_line(pages[1]) == "i", last_line(pages[1]))

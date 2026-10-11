@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 
 SKILL = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(SKILL / "scripts"))
+from toolchain import find_pandoc, find_renderer, installed_font_names, word_available  # noqa: E402
 TOOLS = ["pandoc", "soffice", "libreoffice", "xelatex", "latexmk", "tectonic",
          "pdftotext", "pdffonts", "pdftoppm"]
 TEX_FILES = ["ctexart.cls", "xeCJK.sty", "fontspec.sty", "titlesec.sty", "tocloft.sty",
@@ -44,14 +46,18 @@ def main():
     info = {"tools": {}, "tex_files": {}, "fonts": {}, "python": {}}
     for t in TOOLS:
         info["tools"][t] = shutil.which(t)
-    m = re.search(r"pandoc\s+(\d+)\.(\d+)", sh(["pandoc", "--version"])) if info["tools"]["pandoc"] else None
+    info["tools"]["pandoc"] = find_pandoc()  # 含 PANDOC 环境变量、pypandoc_binary 自带的
+    info["tools"]["word"] = "Word（COM）" if word_available() else None
+    m = re.search(r"pandoc\s+(\d+)\.(\d+)", sh([info["tools"]["pandoc"], "--version"])) \
+        if info["tools"]["pandoc"] else None
     info["pandoc_version"] = "%s.%s" % m.groups() if m else None
     info["python"]["version"] = sys.version.split()[0]
     info["python"]["python-docx"] = importlib.util.find_spec("docx") is not None
+    info["python"]["pymupdf"] = importlib.util.find_spec("pymupdf") is not None
     if shutil.which("kpsewhich"):
         for f in TEX_FILES:
             info["tex_files"][f] = bool(sh(["kpsewhich", f]).strip())
-    families = sh(["fc-list", ":", "family"]).lower() if shutil.which("fc-list") else ""
+    families = installed_font_names()
     for label, keys in FONTS.items():
         info["fonts"][label] = any(k in families for k in keys)
 
@@ -65,7 +71,8 @@ def main():
     docx_ready = pandoc_ok and info["python"]["python-docx"]
     latex_ready = bool(info["tools"]["xelatex"] and info["tools"]["latexmk"] and pandoc_ok
                        and info["tex_files"] and all(info["tex_files"].values()))
-    preview = bool(info["tools"]["soffice"] or info["tools"]["libreoffice"])
+    renderer = find_renderer()
+    preview = renderer is not None
 
     problems = []
     if not info["tools"]["pandoc"]:
@@ -75,10 +82,13 @@ def main():
     if not info["python"]["python-docx"]:
         problems.append("缺 python-docx：pip install python-docx")
     if not preview:
-        problems.append("没有 soffice：无法渲染预览，目录页码不会回填，需在 Word 里更新目录")
-    for f in ("pdftotext", "pdftoppm"):
-        if not info["tools"][f]:
-            problems.append("缺 %s：无法做页面检查" % f)
+        problems.append("没有渲染器（LibreOffice，或 Windows 上的 Word）：无法生成预览，"
+                        "目录页码不会回填，需在 Word 里更新目录")
+    if not info["python"]["pymupdf"]:
+        if not info["tools"]["pdftotext"]:
+            problems.append("缺 pymupdf 和 pdftotext：无法读取预览 PDF 做页面检查（pip install pymupdf）")
+        if not info["tools"]["pdftoppm"]:
+            problems.append("缺 pymupdf 和 pdftoppm：无法把预览页转成图片（pip install pymupdf）")
     if not info["fonts"]["黑体 SimHei"]:
         problems.append("本环境没有黑体 SimHei：预览里标题用替代字体，目录页码可能与 Word 相差一两页，"
                         "交付前请在 Word 里更新目录（docx 文件里写的仍是宋体/黑体）")
@@ -90,6 +100,7 @@ def main():
     info["latex_backend_available_in_this_version"] = False
     info["font_strict"] = strict
     info["recommended_backend"] = "docx" if docx_ready else "none"
+    info["renderer"] = renderer
     info["problems"] = problems
 
     print("== 工具 ==")
@@ -97,6 +108,7 @@ def main():
         print("  %-10s %s" % (t, path or "—"))
     print("  pandoc 版本：", info["pandoc_version"] or "—")
     print("  python-docx：", "有" if info["python"]["python-docx"] else "无")
+    print("  pymupdf：", "有" if info["python"]["pymupdf"] else "无")
     if info["tex_files"]:
         miss = [k for k, v in info["tex_files"].items() if not v]
         print("== TeX 宏包 ==\n  缺失：", miss or "无")
@@ -108,6 +120,7 @@ def main():
           "（本版本尚未提供 LaTeX 后端）")
     print("  课程字体硬性要求（font_strict）：", strict)
     print("  推荐后端：", info["recommended_backend"])
+    print("  预览/目录页码渲染器：", {"soffice": "LibreOffice", "word": "Word"}.get(renderer, "无"))
     for p in problems:
         print("  注意：" + p)
     if "--json" in sys.argv:

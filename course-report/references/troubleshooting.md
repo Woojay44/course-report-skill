@@ -9,7 +9,7 @@
 
 ## 预览里公式是空白
 
-预览用 LibreOffice 渲染，缺少 Math 组件时看不到公式。docx 里是 Word 原生公式（`m:oMath`），以 Word 打开为准。
+用 LibreOffice 渲染预览时，缺少 Math 组件就看不到公式（用 Word 渲染没有这个问题）。docx 里是 Word 原生公式（`m:oMath`），以 Word 打开为准。
 
 ## 预览字体与 Word 不同，目录页码差一两页
 
