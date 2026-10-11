@@ -14,14 +14,22 @@
 
 ```
 course-report/          skill 本体（SKILL.md、scripts/、references/、templates/、tests/）
-docs/issues.md          v2 问题清单
+docs/issues.md          v2 问题清单（✅ 为已修复）
+docs/CHANGELOG.md       版本更新记录
+tools/package.py        打包成 dist/course-report-<版本>.zip
 ```
 
 ## 运行
 
 ```powershell
 python course-report/scripts/probe_env.py      # 环境探测
-python course-report/scripts/selftest.py       # 自检
+python course-report/scripts/selftest.py --require-pages   # 自检（34 项，含页面）
 python course-report/scripts/build_report.py report.md --out out/
 python course-report/scripts/preview_pages.py out/preview/report_preview.pdf   # 逐页 PNG
+```
+
+## 打包
+
+```powershell
+python tools/package.py v3      # → dist/course-report-v3.zip
 ```
