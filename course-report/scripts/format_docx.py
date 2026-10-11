@@ -25,6 +25,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -156,6 +157,9 @@ def set_first_line(ppr, chars):
         ind.set(qn("w:firstLineChars"), str(int(chars * 100)))
         ind.set(qn("w:firstLine"), str(int(chars * 240)))
     else:
+        # 必须同时写 firstLineChars=0：Word 中字符单位优先，只写 firstLine=0
+        # 挡不住从 Normal 继承来的 firstLineChars=200
+        ind.set(qn("w:firstLineChars"), "0")
         ind.set(qn("w:firstLine"), "0")
 
 
@@ -166,6 +170,45 @@ def set_left(ppr, chars):
     if chars:
         ind.set(qn("w:leftChars"), str(int(chars * 100)))
         ind.set(qn("w:left"), str(int(chars * 240)))
+
+
+def set_list_indent(ppr, chars):
+    """正文列表项：左缩进 = 层级 × 2 字符，首行缩进 chars 字符（覆盖编号定义里的悬挂缩进）。返回 numId。"""
+    num_pr = ppr.find(qn("w:numPr"))
+    ilvl = num_pr.find(qn("w:ilvl"))
+    level = int(ilvl.get(qn("w:val"))) if ilvl is not None else 0
+    ind = ppr.get_or_add_ind()
+    for key in list(ind.attrib):
+        del ind.attrib[key]
+    ind.set(qn("w:leftChars"), str(level * 200))
+    ind.set(qn("w:left"), str(level * 480))
+    ind.set(qn("w:firstLineChars"), str(int(chars * 100)))
+    ind.set(qn("w:firstLine"), str(int(chars * 240)))
+    num_id = num_pr.find(qn("w:numId"))
+    return num_id.get(qn("w:val")) if num_id is not None else None
+
+
+def list_suffix_space(doc, num_ids):
+    """编号后用空格而不是制表符：首行缩进下制表符会跳到下一个制表位，编号变长时空出一大段。"""
+    if not num_ids:
+        return
+    numbering = doc.part.numbering_part.element
+    abstract_ids = set()
+    for num in numbering.findall(qn("w:num")):
+        if num.get(qn("w:numId")) in num_ids:
+            ref = num.find(qn("w:abstractNumId"))
+            if ref is not None:
+                abstract_ids.add(ref.get(qn("w:val")))
+    for absnum in numbering.findall(qn("w:abstractNum")):
+        if absnum.get(qn("w:abstractNumId")) not in abstract_ids:
+            continue
+        for lvl in absnum.findall(qn("w:lvl")):
+            suff = lvl.find(qn("w:suff"))
+            if suff is None:
+                suff = OxmlElement("w:suff")
+                insert_ordered(lvl, suff, ["w:lvlText", "w:lvlPicBulletId", "w:legacy",
+                                           "w:lvlJc", "w:pPr", "w:rPr"])
+            suff.set(qn("w:val"), "space")
 
 
 def set_hanging(ppr, chars):
@@ -277,6 +320,45 @@ def text_width_cm(doc):
     if None in (sec.page_width, sec.left_margin, sec.right_margin):
         return 16.0
     return (sec.page_width - sec.left_margin - sec.right_margin) / 360000
+
+
+def text_len_cm(text, size_pt):
+    """估算单行文字宽度：全角字符按 1 个字号宽，半角按 0.55。"""
+    ems = sum(1.0 if unicodedata.east_asian_width(ch) in "WF" else 0.55 for ch in text)
+    return ems * size_pt / 72 * 2.54
+
+
+def cover_col_widths(doc, labels, values, size_pt):
+    """封面信息表列宽：默认 3.8 + 7.2 cm，内容更长时加宽，总宽不超过版心。"""
+    pad = 0.5  # 单元格左右边距
+    label_w = max(3.8, max(text_len_cm(t, size_pt) for t in labels) + pad)
+    value_w = max(7.2, max((text_len_cm(t, size_pt) for t in values), default=0) + pad + 0.6)
+    value_w = min(value_w, text_width_cm(doc) - label_w)
+    return Cm(label_w), Cm(value_w)
+
+
+def set_table_width(table, width):
+    tblpr = table._tbl.tblPr
+    tblw = tblpr.find(qn("w:tblW"))
+    if tblw is None:
+        tblw = OxmlElement("w:tblW")
+        insert_ordered(tblpr, tblw, ["w:jc", "w:tblCellSpacing", "w:tblInd", "w:tblBorders",
+                                     "w:shd", "w:tblLayout", "w:tblCellMar", "w:tblLook"])
+    tblw.set(qn("w:type"), "dxa")
+    tblw.set(qn("w:w"), str(int(width / 635)))  # EMU → twips
+
+
+def plain_table_look(table):
+    """关闭表格样式的首行/首列等条件格式（pandoc 默认表格样式给首行加了下边框）。"""
+    tblpr = table._tbl.tblPr
+    look = tblpr.find(qn("w:tblLook"))
+    if look is None:
+        look = OxmlElement("w:tblLook")
+        tblpr.append(look)
+    look.set(qn("w:val"), "0600")
+    for key, val in (("firstRow", "0"), ("lastRow", "0"), ("firstColumn", "0"),
+                     ("lastColumn", "0"), ("noHBand", "1"), ("noVBand", "1")):
+        look.set(qn("w:" + key), val)
 
 
 def style_format(doc, style, name):
@@ -409,11 +491,13 @@ def apply_paragraph(paragraph, names, gen):
     pf.line_spacing = s["line"]
     set_space_before(pf, s["before"])
     set_space_after(pf, s["after"])
-    first = s["first"]
-
-    if has_pic or has_num:
-        first = 0
-    set_first_line(p.get_or_add_pPr(), first)
+    num_id = None
+    if has_num:
+        # 带自动编号的标题保留编号自带的缩进；正文列表按普通段落排：编号占首行缩进位置，折行顶格
+        if not name.startswith("Heading"):
+            num_id = set_list_indent(ppr, s["first"])
+    else:
+        set_first_line(p.get_or_add_pPr(), 0 if has_pic else s["first"])
     if s["keep"]:
         pf.keep_with_next = True
     if name == "Caption" and re.match(r"^表\s*\d", text_of(p).strip()):
@@ -426,16 +510,20 @@ def apply_paragraph(paragraph, names, gen):
         if name == "Keywords" and run.bold:
             cjk = "黑体"
         set_fonts(run.font, run._element, cjk, s["size"], s["bold"])
+    return num_id
 
 
 def apply_all(doc, names, gen, defaults):
+    list_ids = set()
     for paragraph in doc.paragraphs:
-        apply_paragraph(paragraph, names, gen)
+        list_ids.add(apply_paragraph(paragraph, names, gen))
     for table in doc.tables:
         for paragraph in iter_table_paragraphs(table):
             if defaults and id(paragraph._p) not in gen and paragraph.style.name == "Normal":
                 paragraph.style = doc.styles["Table Text"]
-            apply_paragraph(paragraph, names, gen)
+            list_ids.add(apply_paragraph(paragraph, names, gen))
+    list_ids.discard(None)
+    list_suffix_space(doc, list_ids)
 
 
 # --------------------------------------------------------------------------
@@ -903,23 +991,28 @@ def build_cover(doc, info, gen, gen_refs):
 
     rows = info.get("fields") or []
     if rows:
-        table = doc.add_table(rows=len(rows), cols=2)
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        table.autofit = False
-        widths = (Cm(3.8), Cm(7.2))
-        for col, w in zip(table.columns, widths):
-            col.width = w
-        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
-            set_border(table._tbl.tblPr, edge)
-        for row, (label, value) in zip(table.rows, rows):
-            row.height = Cm(1.2)
-            row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
-
+        labels = []
+        for label, _ in rows:
             label = str(label).strip()
             if len(label) == 2:
                 label = label[0] + "　　" + label[1]
             if not label.endswith(("：", ":")):
                 label += "："
+            labels.append(label)
+        widths = cover_col_widths(doc, labels, [str(v or "") for _, v in rows],
+                                  ALL_SPEC["Cover Field"]["size"])
+        table = doc.add_table(rows=len(rows), cols=2)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table.autofit = False
+        for col, w in zip(table.columns, widths):
+            col.width = w
+        set_table_width(table, sum(widths))
+        plain_table_look(table)
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            set_border(table._tbl.tblPr, edge)
+        for row, label, (_, value) in zip(table.rows, labels, rows):
+            row.height = Cm(1.2)
+            row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
             c0, c1 = row.cells
             for cell, w in zip((c0, c1), widths):
                 cell.width = w
