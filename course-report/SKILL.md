@@ -33,7 +33,7 @@ description: 中文课程报告的排版与交付：把结构化 Markdown 或已
    python scripts/build_report.py report.md --out out/
    ```
 
-3. 姓名、学号、时区取自 `templates/defaults.yaml`（这是用户本人的默认署名，有意保留）；`date: auto`（默认）按该时区取当天。用户本次另有说明（例如换人署名）时，在 front matter 里用 `author`、`student_id`、`cover_fields` 覆盖，不要改 defaults 文件。docx 的“作者”“最后修改者”属性随封面姓名写入。
+3. 姓名、学号、时区取自 `templates/defaults.local.yaml`（用户本人的默认署名，不进 git；没有时退回 `templates/defaults.yaml` 的示例值，脚本会提示）；`date: auto`（默认）按该时区取当天。用户本次另有说明（例如换人署名）时，在 front matter 里用 `author`、`student_id`、`cover_fields` 覆盖，不要改 defaults 文件。用户要求修改自己的默认署名时，改 `defaults.local.yaml`。docx 的“作者”“最后修改者”属性随封面姓名写入。
 4. 读脚本输出：带“警告”“提示”的行必须处理或在交付时说明（包括“还有 N 处占位符”“图片文件不存在”）。
 5. 逐页检查 `out/preview/*_preview.pdf`：`python scripts/preview_pages.py out/preview/<名称>_preview.pdf` 转成逐页 PNG 后看图，见下方“验收”。
 6. 交付 `out/<名称>.docx`，不交预览 PDF。

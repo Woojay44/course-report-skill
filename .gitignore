@@ -6,3 +6,5 @@ out/
 dist/
 *.zip
 ~$*
+# 本人默认署名，不公开
+course-report/templates/defaults.local.yaml

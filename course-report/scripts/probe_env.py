@@ -61,7 +61,9 @@ def main():
     for label, keys in FONTS.items():
         info["fonts"][label] = any(k in families for k in keys)
 
-    defaults = (SKILL / "templates" / "defaults.yaml")
+    defaults = SKILL / "templates" / "defaults.local.yaml"
+    if not defaults.exists():
+        defaults = SKILL / "templates" / "defaults.yaml"
     strict = True
     if defaults.exists():
         mm = re.search(r"^font_strict:\s*(true|false)", defaults.read_text(encoding="utf-8"), re.M | re.I)

@@ -1,4 +1,5 @@
-# 个人默认值。封面的姓名、学号、写作日期从这里取；md 的 front matter 里写同名字段可覆盖。
+# 示例默认值。用自己的署名时：复制本文件为 defaults.local.yaml（不进 git）再改，脚本优先读它。
+# 封面的姓名、学号、写作日期从这里取；md 的 front matter 里写同名字段可覆盖。
 name: 张三
 student_id: "2024000000000"
 # 写作日期（date: auto）按此时区取当天

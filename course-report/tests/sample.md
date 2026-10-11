@@ -2,6 +2,8 @@
 title: 网络空间安全的战略演进与技术体系研究
 org: 某某大学
 course: 《网络空间安全》课程报告
+author: 张三
+student_id: "2024000000000"
 cover_fields:
   - 课程名称: 网络空间安全综合治理专题（2026 年秋季）
 date: auto

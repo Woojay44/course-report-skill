@@ -19,6 +19,10 @@ docs/CHANGELOG.md       版本更新记录
 tools/package.py        打包成 dist/course-report-<版本>.zip
 ```
 
+## 个人默认署名
+
+`course-report/templates/defaults.yaml` 是示例值。复制为同目录下的 `defaults.local.yaml` 再改成自己的姓名、学号（该文件已在 `.gitignore` 中），脚本会优先读取它。
+
 ## 运行
 
 ```powershell

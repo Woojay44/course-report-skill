@@ -68,7 +68,7 @@ def main():
                            if e.tag == qn("w:p") and e.find(qn("w:pPr")) is not None
                            and e.find(qn("w:pPr")).find(qn("w:sectPr")) is not None), 0)
     cover_text = "".join(text_of(e) for e in body[:first_sect_idx + 1])
-    check("封面含姓名", "张三" in cover_text)
+    check("封面含姓名（样例 front matter）", "张三" in cover_text)
     check("封面含学号", "2024000000000" in cover_text)
     check("封面含写作日期（自动）", re.search(r"\d{4}年\d{1,2}月\d{1,2}日", cover_text), re.findall(r"\d{4}年\d{1,2}月\d{1,2}日", cover_text))
 

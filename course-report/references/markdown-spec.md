@@ -8,7 +8,7 @@ title: 报告题目                 # 必填
 subtitle:                       # 可选
 org: 某某大学                   # 可选，缺省取 defaults.yaml
 course: 《课程名》课程报告      # 可选，缺省取 defaults.yaml
-author: 张三                  # 可选，缺省取 defaults.yaml 的 name；同时写入 docx 作者属性
+author: 张三                    # 可选，缺省取 defaults.local.yaml（没有则 defaults.yaml）的 name；同时写入 docx 作者属性
 student_id: "2024000000000"     # 可选，缺省取 defaults.yaml（务必加引号）
 cover_fields:                   # 可选：额外封面字段，顺序即显示顺序
   - 学院: 计算机学院

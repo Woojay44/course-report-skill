@@ -3,7 +3,8 @@
 用法：
 python scripts/build_report.py report.md --out out/
 可选：
---defaults templates/defaults.yaml   个人默认值（姓名、学号、时区…）
+--defaults 文件                      个人默认值（姓名、学号、时区…）；缺省用 templates/defaults.local.yaml，
+                                     没有时用 templates/defaults.yaml（示例值）
 --backend docx                       目前只有 docx（LaTeX 后端阶段 2 提供）
 --numbering cn|decimal|manual        标题编号（默认取 defaults / front matter）
 --page-numbers roman|continuous
@@ -23,7 +24,12 @@ sys.path.insert(0, str(HERE))
 from toolchain import find_pandoc, render_pdf  # noqa: E402
 SKILL = HERE.parent
 FILTER = HERE / "filters" / "report.lua"
-DEFAULTS = SKILL / "templates" / "defaults.yaml"
+DEFAULTS_EXAMPLE = SKILL / "templates" / "defaults.yaml"
+DEFAULTS_LOCAL = SKILL / "templates" / "defaults.local.yaml"  # 本人默认值，不进 git
+
+
+def default_defaults():
+    return DEFAULTS_LOCAL if DEFAULTS_LOCAL.exists() else DEFAULTS_EXAMPLE
 
 
 def log(msg):
@@ -148,7 +154,7 @@ def main():
     ap = argparse.ArgumentParser(description="结构化 Markdown → 课程报告")
     ap.add_argument("markdown", type=Path)
     ap.add_argument("--out", type=Path, default=Path("out"))
-    ap.add_argument("--defaults", type=Path, default=DEFAULTS)
+    ap.add_argument("--defaults", type=Path, default=None)
     ap.add_argument("--backend", choices=["auto", "docx", "latex"], default="auto")
     ap.add_argument("--numbering", choices=["cn", "decimal", "manual"])
     ap.add_argument("--page-numbers", choices=["roman", "continuous"])
@@ -167,6 +173,9 @@ def main():
         die("找不到 " + str(md))
     md_text = md.read_text(encoding="utf-8")
 
+    opts.defaults = opts.defaults or default_defaults()
+    if opts.defaults == DEFAULTS_EXAMPLE:
+        log("提示：没有 templates/defaults.local.yaml，封面署名用的是 defaults.yaml 里的示例值")
     defaults = pandoc_meta(pandoc, metadata_file=opts.defaults) if opts.defaults.exists() else {}
     meta = pandoc_meta(pandoc, md_path=md)
     title = as_text(meta.get("title"))

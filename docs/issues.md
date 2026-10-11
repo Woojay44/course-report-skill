@@ -38,7 +38,7 @@
 
 ## 五、隐私与元数据
 
-14. ~~`templates/defaults.yaml` 与 `selftest.py` 写死真实姓名、学号，随包分发。~~ 不改：用户确认这是有意的个人默认值（张三 / 2024000000000），换人时在 front matter 里覆盖。
+14. ✅ `templates/defaults.yaml` 与 `selftest.py` 写死真实姓名、学号，随包分发。处理：仓库里改为示例值（张三 / 2024000000000，含 git 历史）；本人默认值放 `templates/defaults.local.yaml`（不进 git），脚本优先读它；自检的样例显式写作者，不依赖默认值。
 15. ✅ 输出 docx 残留自定义属性 `numbering=cn`、pandoc 样式名；作者为空，Word 再保存时“最后修改者”变成本机账户名。
     已修：Lua 过滤器读完 `numbering` 即从元数据删除（custom.xml 只剩空壳）；作者/最后修改者写封面姓名（`--author`，默认取封面“姓名”），标题写封面题目；原稿缺属性部件时不带出 python-docx 的默认值。
     不修：pandoc 的样式名（Compact、SourceCode 等）只在 Word 样式列表里可见，不影响版面；在 Word 里再次保存时“最后修改者”仍会被 Word 改成当前账户名，这是 Word 的行为。
