@@ -5,6 +5,7 @@
       python scripts/probe_env.py --json   # 另附 JSON，便于贴回给维护者
 """
 
+import importlib.util
 import json
 import re
 import shutil
@@ -46,11 +47,7 @@ def main():
     m = re.search(r"pandoc\s+(\d+)\.(\d+)", sh(["pandoc", "--version"])) if info["tools"]["pandoc"] else None
     info["pandoc_version"] = "%s.%s" % m.groups() if m else None
     info["python"]["version"] = sys.version.split()[0]
-    try:
-        import docx  # noqa: F401
-        info["python"]["python-docx"] = True
-    except Exception:
-        info["python"]["python-docx"] = False
+    info["python"]["python-docx"] = importlib.util.find_spec("docx") is not None
     if shutil.which("kpsewhich"):
         for f in TEX_FILES:
             info["tex_files"][f] = bool(sh(["kpsewhich", f]).strip())

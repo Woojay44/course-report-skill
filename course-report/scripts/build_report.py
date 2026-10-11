@@ -122,10 +122,11 @@ def listify(v):
 
 def lint(md_text, md_dir, meta):
     problems = []
-    n = md_text.count("")
+    n = md_text.count("【待补充")
     if n:
         problems.append("正文里还有 %d 处占位符，交付前需补全或向用户说明" % n)
-    for src in re.findall(r"!\[([^\]]*)\]\(([^)\s]+)\)", md_text):
+    # 兼容 ![图题](a.png)、![图题](<a b.png>)、![图题](a.png "标题")
+    for _alt, src in re.findall(r"!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)", md_text):
         if not re.match(r"^[a-z]+://", src) and not (md_dir / src).exists():
             problems.append("图片文件不存在：" + src)
     if not re.search(r"^#{1,3}\s+\S", FRONT.sub("", md_text), re.M):
@@ -246,5 +247,5 @@ def main():
     log("提醒：在 Word 里打开后，右键目录 → 更新域 → 更新整个目录，再导出 PDF")
 
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()

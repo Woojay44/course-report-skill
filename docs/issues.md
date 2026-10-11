@@ -1,13 +1,15 @@
 # v2 问题清单
 
+✅ 表示已修复。
+
 基线：`D:\Project-codex\chinese-course-docx-formatting\archives\course-report-v2.zip`（2026-10-02），即本仓库首个提交。
 来源：2026-10-11 用 v2 实际排版 iris-knn-tree-lab 的实验报告，加上对原版的 pyflakes、selftest、路线 A/B 实跑。
 
 ## 一、脚本跑不通
 
-1. `build_report.py` 末尾 `if __name__ == "__main__"` 缩进进了 `main()` 里：路线 B 什么都不做，退出码 0。
-2. `build_report.py` `lint()`：`re.findall` 有两个分组、返回元组，循环当成字符串用 → 有图片就 TypeError。
-3. `build_report.py` `lint()`：`md_text.count("")` 恒非 0 → 每次都误报占位符（应为 `"【待补充"`）。
+1. ✅ `build_report.py` 末尾 `if __name__ == "__main__"` 缩进进了 `main()` 里：路线 B 什么都不做，退出码 0。
+2. ✅ `build_report.py` `lint()`：`re.findall` 有两个分组、返回元组，循环当成字符串用 → 有图片就 TypeError。另：带标题的图片 `![](a.png "t")` 匹配不到，缺图漏报。
+3. ✅ `build_report.py` `lint()`：`md_text.count("")` 恒非 0 → 每次都误报占位符（应为 `"【待补充"`）。
 
 ## 二、版面错误
 
@@ -21,6 +23,7 @@
 8. 验收依赖 `pdftoppm`，Windows 通常没有，无替代方案。
 9. 字体检测只用 `fc-list`，Windows 上恒报缺宋体/黑体。
 10. 只在 PATH 找 pandoc，不识别 `pypandoc_binary` 自带的 pandoc。
+20. Windows 的 Python 不带 IANA 时区库，`zoneinfo` 取 Asia/Taipei 失败，每次报警告后回退 UTC+8（结果正确）；需依赖 `tzdata`。
 
 ## 四、自检
 
@@ -38,4 +41,4 @@
 16. 原仓库根目录是最旧版本（2026-09-28，仅说明文字），最新 v2 只在 zip 里。
 17. 两版定位矛盾：旧版“不负责撰写”，v2 支持“根据项目材料写报告”。
 18. 原仓库无 git，三个 zip 命名不统一。
-19. pyflakes：`format_docx.py` 未用 `sys`、`Section`；`probe_env.py` 未用 `docx`。
+19. ✅ pyflakes：`format_docx.py` 未用 `sys`、`Section`；`probe_env.py` 未用 `docx`。

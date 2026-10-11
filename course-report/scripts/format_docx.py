@@ -24,20 +24,17 @@ import json
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from docx import Document
-
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH as A
 from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.section import Section
 from docx.shared import Cm, Pt, RGBColor
 from docx.text.paragraph import Paragraph
 

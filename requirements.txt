@@ -1,0 +1,5 @@
+python-docx
+# pandoc：可用系统安装的 pandoc，或用下面这个包自带的
+pypandoc_binary
+# 开发
+pyflakes
