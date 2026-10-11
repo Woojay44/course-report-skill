@@ -38,7 +38,7 @@
 
 ## 五、隐私与元数据
 
-14. `templates/defaults.yaml` 与 `selftest.py` 写死真实姓名、学号，随包分发。
+14. ~~`templates/defaults.yaml` 与 `selftest.py` 写死真实姓名、学号，随包分发。~~ 不改：用户确认这是有意的个人默认值（张三 / 2024000000000），换人时在 front matter 里覆盖。
 15. 输出 docx 残留自定义属性 `numbering=cn`、pandoc 样式名；作者为空，Word 再保存时“最后修改者”变成本机账户名。
 
 ## 六、源码管理
