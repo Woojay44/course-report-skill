@@ -37,3 +37,7 @@ python course-report/scripts/preview_pages.py out/preview/report_preview.pdf   #
 ```powershell
 python tools/package.py v3      # → dist/course-report-v3.zip
 ```
+
+## 许可证
+
+[MIT](LICENSE)
