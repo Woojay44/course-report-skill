@@ -1,8 +1,8 @@
 interface:
   display_name: 中文课程报告排版与生成
-  short_description: 把课程报告排成带封面、目录、论文式摘要和分区页码的规范 Word 文档，并做渲染检查
-  default_prompt: Use $course-report to turn this report (Markdown, DOCX, or project materials) into a
-    polished DOCX with cover page, table of contents, paper-style abstract and Roman/Arabic page numbers.
+  short_description: 把课程报告排成带封面、目录、论文式摘要和分区页码的规范 PDF（LaTeX/xelatex），并逐页做版面检查
+  default_prompt: Use $course-report to turn this report (Markdown or project materials) into a
+    polished PDF (LaTeX / ctexart + xelatex) with cover page, table of contents, paper-style abstract and Roman/Arabic page numbers.
   icon_small: assets/icon.svg
   icon_large: assets/icon.svg
 policy:

@@ -35,6 +35,45 @@ def find_pandoc():
 
 
 # ---------------------------------------------------------------- 渲染器
+def find_xelatex():
+    """环境变量 XELATEX → PATH。"""
+    env = os.environ.get("XELATEX")
+    if env and Path(env).exists():
+        return env
+    return shutil.which("xelatex")
+
+
+def run_xelatex(tex_path, outdir, cwd, runs=2, timeout=300):
+    """用 xelatex 把 tex 编成 PDF，跑 runs 遍（默认两遍，生成目录页码）。
+    cwd 设为 report.md 所在目录，使正文里的 screenshots/... 相对路径能被找到
+    （规避含中文的 \\graphicspath 在部分环境下的解析问题）。
+    返回 (pdf 路径或 None, 最后一遍的日志)。"""
+    xe = find_xelatex()
+    if not xe:
+        return None, "找不到 xelatex"
+    tex_path, outdir, cwd = Path(tex_path).resolve(), Path(outdir).resolve(), Path(cwd).resolve()
+    outdir.mkdir(parents=True, exist_ok=True)
+    # xelatex 把参数里的反斜杠当控制序列，Windows 下必须转成正斜杠；
+    # tex/输出与 cwd 跨盘时 relpath 会抛错，退回绝对路径（正斜杠）。
+    try:
+        tex_rel = os.path.relpath(str(tex_path), str(cwd)).replace(os.sep, "/")
+        out_rel = os.path.relpath(str(outdir), str(cwd)).replace(os.sep, "/")
+    except ValueError:
+        tex_rel = str(tex_path).replace(os.sep, "/")
+        out_rel = str(outdir).replace(os.sep, "/")
+    log = ""
+    for _ in range(runs):
+        r = subprocess.run([xe, "-interaction=nonstopmode", "-halt-on-error",
+                            "-output-directory", out_rel, tex_rel],
+                           cwd=str(cwd), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout)
+        log = r.stdout or ""
+        if r.returncode != 0:
+            return None, log + "\n" + (r.stderr or "")
+    pdf = outdir / (tex_path.stem + ".pdf")
+    return (pdf if pdf.exists() else None), log
+
+
 def find_soffice():
     return shutil.which("soffice") or shutil.which("libreoffice")
 

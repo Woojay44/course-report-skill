@@ -7,9 +7,5 @@ timezone: Asia/Taipei
 # 可选：学校、课程，留空则封面不显示
 org: ""
 course: ""
-# 课程是否硬性要求宋体/黑体。true：默认走 docx，交付 docx，由本机 Word 导出 PDF
-font_strict: true
 # 标题编号：cn（一、（一）1.）| decimal（1、1.1）| manual（标题里自己写编号）
 numbering: cn
-# 页码：roman（目录/摘要罗马数字，正文从 1）| continuous（封面计 1 页不显示，其后连续）
-page_numbers: roman

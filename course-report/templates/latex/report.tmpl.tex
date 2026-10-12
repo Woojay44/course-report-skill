@@ -1,0 +1,104 @@
+% =============================================================
+% course-report 的 LaTeX 模板（week07 风格：ctexart + xelatex）
+% 编译：xelatex 跑两遍（生成目录页码与交叉引用）
+% 本文件是模板，下列占位符（两端各两个 at 号）由 scripts/build_report.py 替换：
+%   CLASSOPTS    文档类选项（如 11pt,a4paper）
+%   GRAPHICSPATH graphicspath（report.md 所在目录绝对路径）
+%   HEADL/HEADR  页眉左右内容
+%   COVER        titlepage 封面
+%   FRONT        前置部分（Roman：目录、摘要）
+%   BODY         正文（arabic，pandoc 转换的片段）
+% =============================================================
+\documentclass[@@CLASSOPTS@@]{ctexart}
+
+\usepackage[margin=2.5cm,headheight=14pt]{geometry}
+\usepackage{booktabs,tabularx,multirow,makecell,array,longtable}
+\usepackage{calc}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage[colorlinks,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+% ---------- 版式 ----------
+\setlist{nosep,leftmargin=2em}
+% 题注：标签与编号已由脚本（lua 过滤器）写进题注文字（“图 N　”“表 N　”），
+% 这里关掉 LaTeX 自带的 “图1：/表1：” 标签，避免重复。
+\captionsetup{font=small,labelformat=empty,labelsep=none,skip=6pt}
+\renewcommand{\arraystretch}{1.25}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% 章节不用 LaTeX 自动编号（中文编号“一、（一）1.”由脚本写入标题），但仍进目录
+\setcounter{secnumdepth}{-1}
+\setcounter{tocdepth}{3}
+
+% 浮动体参数：图表尽量与正文同页，接近满页才单独成页，减少大块留白
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.12}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
+
+% 图片目录（相对 report.md 的 screenshots/... 路径由此解析；并辅以运行时 cwd）
+@@GRAPHICSPATH@@
+
+% ---------- 页眉页脚 ----------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small @@HEADL@@}
+\fancyhead[R]{\small @@HEADR@@}
+\fancyfoot[C]{\small \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- 代码框（listings）----------
+\definecolor{codebg}{gray}{0.96}
+\definecolor{codeframe}{gray}{0.72}
+\lstset{
+  basicstyle=\small\ttfamily,
+  backgroundcolor=\color{codebg},
+  frame=single, rulecolor=\color{codeframe}, framesep=5pt,
+  breaklines=true, breakatwhitespace=false, keepspaces=true,
+  columns=flexible, showstringspaces=false,
+  extendedchars=true, upquote=true,
+  xleftmargin=6pt, xrightmargin=6pt, aboveskip=1em, belowskip=1em,
+  tabsize=2,
+}
+
+% ---------- 封面辅助宏（week07 风格）----------
+% 封面统一宋体；宋体无粗体字重，标题用伪粗体
+\setCJKfamilyfont{coversong}[AutoFakeBold=2.5]{SimSun}
+\newcommand{\coversong}{\CJKfamily{coversong}}
+\newcommand{\coverfield}[2]{%
+  \makebox[5em][s]{#1}：\underline{\makebox[8.5cm][c]{#2}}}
+
+% ---------- pandoc 片段需要的辅助宏 ----------
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\passthrough}[1]{#1}
+% calc 已提供 \real（表格按比例分列宽时用），此处仅兜底
+\providecommand{\real}[1]{#1}
+% \pandocbounded：仅用 graphicx 把图片缩到不超过版心宽与 0.8 页高（保持比例），防越界；
+% 已经够小的图不放大。避免引入 adjustbox 依赖。
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*{\pandocbounded}[1]{%
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{0.8\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox\pandoc@box\fi}
+\makeatother
+
+\begin{document}
+
+@@COVER@@
+
+@@FRONT@@
+
+@@BODY@@
+
+\end{document}
