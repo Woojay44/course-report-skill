@@ -1,5 +1,16 @@
 # 更新记录
 
+## v4（2026-10-12 / 2026-10-13）
+
+**后端换成 LaTeX**
+- `build_report.py` 改为 pandoc 出 LaTeX 片段 → 套 `templates/latex/report.tmpl.tex`（ctexart）→ xelatex 两遍出 PDF；不再输出 docx。
+- 新增 `--class-opts`、`--no-cover`、`--no-toc`、`--keep-tex`，可在 `out/work/*.tex` 上手改后重编。
+
+**清理 DOCX 时期遗留**
+- `toolchain.py` 删除 LibreOffice / Word 渲染（`find_soffice`、`word_available`、`find_renderer`、`render_pdf`）。
+- `probe_env.py` 不再探测 soffice / Word，改为检查 xelatex 与 TeX 宏包。
+- `requirements.txt` 去掉 `python-docx`；README、仓库简介改为 LaTeX / PDF。
+
 ## v3（2026-10-11）
 
 基于 v2（2026-10-02）。问题编号见 [issues.md](issues.md)。

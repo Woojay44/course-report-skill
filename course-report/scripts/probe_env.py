@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""探测运行环境并推荐后端。
+"""探测 LaTeX 后端的运行环境：pandoc、xelatex、TeX 宏包、字体、PDF 读取工具。
 
 用法：python scripts/probe_env.py          # 人类可读摘要
       python scripts/probe_env.py --json   # 另附 JSON，便于贴回给维护者
@@ -15,9 +15,8 @@ from pathlib import Path
 
 SKILL = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL / "scripts"))
-from toolchain import find_pandoc, find_renderer, installed_font_names, word_available  # noqa: E402
-TOOLS = ["pandoc", "soffice", "libreoffice", "xelatex", "latexmk", "tectonic",
-         "pdftotext", "pdffonts", "pdftoppm"]
+from toolchain import find_pandoc, find_xelatex, installed_font_names  # noqa: E402
+TOOLS = ["pandoc", "xelatex", "kpsewhich", "pdftotext", "pdftoppm"]
 # LaTeX 后端模板 templates/latex/report.tmpl.tex 实际用到的宏包
 TEX_FILES = ["ctexart.cls", "xeCJK.sty", "fontspec.sty", "geometry.sty", "fancyhdr.sty",
              "caption.sty", "booktabs.sty", "longtable.sty", "tabularx.sty", "array.sty",
@@ -48,7 +47,7 @@ def main():
     for t in TOOLS:
         info["tools"][t] = shutil.which(t)
     info["tools"]["pandoc"] = find_pandoc()  # 含 PANDOC 环境变量、pypandoc_binary 自带的
-    info["tools"]["word"] = "Word（COM）" if word_available() else None
+    info["tools"]["xelatex"] = find_xelatex()  # 含 XELATEX 环境变量
     m = re.search(r"pandoc\s+(\d+)\.(\d+)", sh([info["tools"]["pandoc"], "--version"])) \
         if info["tools"]["pandoc"] else None
     info["pandoc_version"] = "%s.%s" % m.groups() if m else None
@@ -64,7 +63,6 @@ def main():
     pandoc_ok = bool(info["pandoc_version"]) and int(info["pandoc_version"].split(".")[0]) >= 3
     latex_ready = bool(info["tools"]["xelatex"] and pandoc_ok
                        and info["tex_files"] and all(info["tex_files"].values()))
-    renderer = find_renderer()
 
     problems = []
     if not info["tools"]["pandoc"]:
@@ -90,7 +88,6 @@ def main():
 
     info["latex_ready"] = latex_ready
     info["recommended_backend"] = "latex" if latex_ready else "none"
-    info["renderer"] = renderer
     info["problems"] = problems
 
     print("== 工具 ==")

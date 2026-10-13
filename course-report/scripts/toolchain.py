@@ -1,4 +1,4 @@
-"""外部工具探测与调用：pandoc、PDF 渲染（LibreOffice / Windows 上的 Word）、PDF 文字与页面图像。
+"""外部工具探测与调用：pandoc、xelatex、PDF 文字与页面图像、已安装字体。
 
 其他脚本统一从这里取，保证 probe_env 报告的和实际使用的是同一套工具。
 """
@@ -34,7 +34,7 @@ def find_pandoc():
     return None
 
 
-# ---------------------------------------------------------------- 渲染器
+# ---------------------------------------------------------------- xelatex
 def find_xelatex():
     """环境变量 XELATEX → PATH。"""
     env = os.environ.get("XELATEX")
@@ -72,77 +72,6 @@ def run_xelatex(tex_path, outdir, cwd, runs=2, timeout=300):
             return None, log + "\n" + (r.stderr or "")
     pdf = outdir / (tex_path.stem + ".pdf")
     return (pdf if pdf.exists() else None), log
-
-
-def find_soffice():
-    return shutil.which("soffice") or shutil.which("libreoffice")
-
-
-def word_available():
-    """Windows 上是否注册了 Word 的 COM 接口。"""
-    if not IS_WINDOWS:
-        return False
-    try:
-        import winreg
-        winreg.CloseKey(winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r"Word.Application\CLSID"))
-        return True
-    except OSError:
-        return False
-
-
-def find_renderer():
-    """返回 "soffice"、"word" 或 None。"""
-    if find_soffice():
-        return "soffice"
-    if word_available():
-        return "word"
-    return None
-
-
-# Word 已经在运行时，New-Object 可能接到同一个实例：只关自己打开的文档，
-# 实例里还有用户的文档就不 Quit。
-WORD_EXPORT_PS = r"""
-$ErrorActionPreference = 'Stop'
-$w = New-Object -ComObject Word.Application
-$w.Visible = $false
-$w.DisplayAlerts = 0
-$d = $null
-try {
-  $d = $w.Documents.Open($env:CR_DOCX, $false, $true, $false)
-  if ($env:CR_UPDATE_TOC -eq '1') { foreach ($t in $d.TablesOfContents) { $t.Update() } }
-  $d.ExportAsFixedFormat($env:CR_PDF, 17)
-} finally {
-  if ($d -ne $null) { $d.Close(0) }
-  if ($w.Documents.Count -eq 0) { $w.Quit() }
-}
-"""
-
-
-def render_pdf(docx_path, outdir, update_toc=False, timeout=300):
-    """把 docx 渲染成 PDF，返回 (pdf 路径, 渲染器名)；失败返回 (None, 渲染器名或 None)。
-    update_toc 只对 Word 有效：导出前先更新目录域（预览用；回填页码时不要开）。"""
-    docx_path, outdir = Path(docx_path).resolve(), Path(outdir).resolve()
-    outdir.mkdir(parents=True, exist_ok=True)
-    pdf = outdir / (docx_path.stem + ".pdf")
-    if pdf.exists():
-        pdf.unlink()
-    renderer = find_renderer()
-    try:
-        if renderer == "soffice":
-            subprocess.run([find_soffice(), "--headless", "--convert-to", "pdf", "--outdir",
-                            str(outdir), str(docx_path)], capture_output=True, timeout=timeout,
-                           check=True)
-        elif renderer == "word":
-            env = dict(os.environ, CR_DOCX=str(docx_path), CR_PDF=str(pdf),
-                       CR_UPDATE_TOC="1" if update_toc else "0")
-            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                            WORD_EXPORT_PS], capture_output=True, timeout=timeout, check=True,
-                           env=env)
-        else:
-            return None, None
-    except Exception:
-        return None, renderer
-    return (pdf if pdf.exists() else None), renderer
 
 
 # ---------------------------------------------------------------- PDF 读取
