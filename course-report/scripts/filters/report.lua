@@ -87,7 +87,71 @@ local function number_figure(f)
   return f
 end
 
+-- 正文引用 [1]、[2][3] → 上标角标（参考文献节内的条目编号不动）。只认单个数字一对括号，
+-- 多篇连引写成 [4][5]，不用 [4,5] / [1-3]。
+-- 紧跟在英文字母/数字后的 [0] 之类（如 a[0]）视为下标写法，不转换。
+local CITE = "%[%d+%]"
+
+local function split_cites(s)
+  local out, pos = {}, 1
+  while true do
+    local a, b = s:find(CITE, pos)
+    while a and a > 1 and s:sub(a - 1, a - 1):match("%w") do
+      a, b = s:find(CITE, b + 1)
+    end
+    if not a then break end
+    -- 连续的 [2][3] 合成一个角标
+    while true do
+      local c, d = s:find(CITE, b + 1)
+      if c ~= b + 1 then break end
+      b = d
+    end
+    if a > pos then out[#out + 1] = pandoc.Str(s:sub(pos, a - 1)) end
+    out[#out + 1] = pandoc.Superscript({pandoc.Str(s:sub(a, b))})
+    pos = b + 1
+  end
+  if #out == 0 then return nil end
+  if pos <= #s then out[#out + 1] = pandoc.Str(s:sub(pos)) end
+  return out
+end
+
+local function cite_inlines(inlines)
+  local res, changed = pandoc.Inlines({}), false
+  for _, el in ipairs(inlines) do
+    local parts = el.t == "Str" and split_cites(el.text) or nil
+    if parts then
+      changed = true
+      for _, p in ipairs(parts) do
+        -- 角标前的空格去掉：“重叠 [2]” → “重叠²”
+        if p.t == "Superscript" and #res > 0 and res[#res].t == "Space" then
+          res:remove(#res)
+        end
+        res:insert(p)
+      end
+    else
+      res:insert(el)
+    end
+  end
+  return changed and res or nil
+end
+
+local function superscript_cites(doc)
+  local in_refs = false
+  for i, blk in ipairs(doc.blocks) do
+    if blk.t == "Header" and blk.level == 1 then
+      local text = pandoc.utils.stringify(blk.content)
+      in_refs = unnumbered[text] or unnumbered[text:lower()] or false
+      in_refs = in_refs and text ~= "致谢" and text ~= "谢辞"
+        and text:lower() ~= "acknowledgements" and text:lower() ~= "acknowledgments"
+    elseif not in_refs then
+      doc.blocks[i] = pandoc.walk_block(blk, { Inlines = cite_inlines })
+    end
+  end
+  return doc
+end
+
 return {
   { Meta = read_meta },
+  { Pandoc = superscript_cites },
   { Header = number_header, Table = number_table, Figure = number_figure },
 }

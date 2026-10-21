@@ -148,7 +148,8 @@ def build_cover(org, course, title, subtitle, fields):
     if org:
         L += [r"  {\zihao{-2} %s}\par" % latex_escape(org), r"  \vspace{1.1cm}"]
     if course:
-        L += [r"  {\zihao{3} %s}\par" % latex_escape(course), r"  \vspace{0.7cm}"]
+        L += [r"  {\zihao{3} %s}\par" % latex_escape(course),
+              r"  \nointerlineskip\vspace{0.35cm}"]
     L += [r"  \rule{0.5\textwidth}{0.6pt}\par", r"  \vspace{1.0cm}"]
     L.append(r"  {\zihao{1}\bfseries %s}\par" % latex_escape(title))
     if subtitle:
