@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""自检：用 tests/sample.md 跑一遍完整 LaTeX 流程，检查 PDF 结构与版面。把整段输出贴回即可。
+"""自检：用 tests/sample.md 和 variant.md 跑完整 LaTeX 流程，检查 PDF 与 LaTeX。把整段输出贴回即可。
 
 用法：python scripts/selftest.py
 退出码：0 = 没有 FAIL；1 = 有 FAIL。
@@ -83,6 +83,45 @@ def main():
             check("无内容越界（最低行 ≤ 0.95 页高）", worst <= 0.95, "最低 %.2f" % worst)
         else:
             print("  [SKIP] 越界检查（缺 pymupdf）")
+
+    variant = SKILL / "tests" / "variant.md"
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        r = subprocess.run([sys.executable, str(HERE / "build_report.py"), str(variant),
+                            "--out", str(out), "--no-cover", "--no-toc", "--keep-tex"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           env=child_env)
+        print(r.stdout)
+        check("variant 构建成功", r.returncode == 0, "退出码 %d" % r.returncode)
+        if r.returncode != 0:
+            print(r.stderr[-1500:])
+
+        pdf = out / (variant.stem + ".pdf")
+        pages = (pdf_text_pages(pdf) or []) if pdf.exists() else []
+        full = "\n".join(pages)
+        tex_path = out / "work" / (variant.stem + ".tex")
+        tex = tex_path.read_text(encoding="utf-8") if tex_path.exists() else ""
+        compact = re.sub(r"\s+", "", full)
+
+        check("无封面（第 1 页为摘要）",
+              bool(pages) and "变体摘要探针" in re.sub(r"\s+", "", pages[0]))
+        check("无目录", bool(pages) and "目录" not in compact)
+        check("数字编号（一级标题为 1、2）",
+              bool(re.search(r"(?<!\d)1\s+编号探针", full))
+              and bool(re.search(r"(?<!\d)2\s+公式探针", full))
+              and not re.search(r"[一二三四五六七八九十]+、", compact))
+
+        # 同时锁定正文引用与参考文献条目的上下文，避免模板或其他上标造成误通过。
+        body_tex, separator, refs_tex = tex.partition(r"\section{参考文献}")
+        check("引用上标（参考文献编号不转换）",
+              bool(separator) and r"正文引用探针\textsuperscript{{[}1{]}}。" in body_tex
+              and bool(re.search(r"(?m)^\s*\{\[\}1\{\]\}\s+引用条目探针。", refs_tex))
+              and r"\textsuperscript" not in refs_tex)
+        check("占位符提示",
+              bool(re.search(r"(?<!\d)1\s*处占位符", r.stdout)))
+        check("行内与独立公式",
+              r"\(x + 1\)" in body_tex
+              and bool(re.search(r"\\\[\s*y\s*=\s*2\s*\\\]", body_tex)))
 
     _summary()
     sys.exit(1 if any(not ok for _, ok in CHECKS) else 0)
