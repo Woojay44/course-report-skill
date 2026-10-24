@@ -20,6 +20,7 @@ course-report/          skill 本体（SKILL.md、scripts/、references/、templ
 docs/issues.md          v2（DOCX 版）问题清单，留作历史
 docs/CHANGELOG.md       版本更新记录
 tools/package.py        打包成 dist/course-report-<版本>.zip
+tools/test_package.py   打包测试（确认个人署名等文件不进 zip）
 ```
 
 ## 个人默认署名
@@ -38,7 +39,9 @@ python course-report/scripts/preview_pages.py out/report.pdf        # 逐页 PNG
 ## 打包
 
 ```powershell
-python tools/package.py v4      # → dist/course-report-v4.zip
+python tools/package.py v4                  # → dist/course-report-v4.zip
+python tools/package.py v4 --out 其他目录   # 输出到指定目录
+python tools/test_package.py                # 打包测试
 ```
 
 ## 许可证

@@ -71,7 +71,7 @@ description: 中文课程报告的排版与交付：把结构化 Markdown 排成
 
 `python scripts/preview_pages.py out/<名称>.pdf` 逐页转 PNG 后逐页看：封面单独一页无页码、信息表字段不折行；目录紧跟封面、单栏连续、点线引导、页码正确、翻页处没有异常大片留白；摘要无灰底无边框；正文首页页码为 1；三线表为 booktabs 三线、题注在表上、数字没被挤断；代码框不越界、长行已换行；图在图题之上、含图表页无越界；参考文献页和末页无异常空白。
 
-改过脚本或模板、或怀疑环境有问题时运行 `python scripts/selftest.py`：用 `tests/sample.md` 跑一遍完整流程，检查结构与版面共 15 项，结果为 PASS / FAIL。
+改过脚本或模板、或怀疑环境有问题时运行 `python scripts/selftest.py`：用 `tests/sample.md` 跑一遍完整流程，再用 `tests/variant.md` 带 `--no-cover --no-toc` 和数字编号跑一遍，检查结构、版面与各开关共 22 项，结果为 PASS / FAIL。
 
 ## 交付说明（至多三行）
 
